@@ -1,5 +1,4 @@
 #include <Arduino.h>
-#include <ArduinoJson.h>
 
 #if defined ESP8266
 #include <ESP8266WiFi.h>
@@ -10,13 +9,13 @@
 #include <PubSubClient.h>
 
 
-#include "izar_wmbus.h"
+#include <izar_wmbus.h>
 
-extern uint32_t meterId;
-extern const char* ssid;
-extern const char* password;
-extern const char* mqttServer;
-extern const int mqttPort;
+//uint32_t meterId = 0x12345678;
+const char* ssid = "Wifi";
+const char* password =  "WifiPassword";
+const char* mqttServer = "192.168.1.128";
+int mqttPort = 1883;
 
 IzarWmbus reader;
 
@@ -44,7 +43,7 @@ void reconnect() {
 }
 
 void setup() {
-    Serial.begin(9600);
+    Serial.begin(115200);
     // reader.init(meterId);
     reader.init(0);
 
@@ -65,7 +64,6 @@ void setup() {
 }
 
 IzarResultData data;
-StaticJsonDocument<200> doc;
 
 void loop() {
     if (!client.connected()) {
@@ -74,11 +72,12 @@ void loop() {
     client.loop();
     FetchResult result = reader.fetchPacket(&data);
     if (result == FETCH_SUCCESSFUL) {
-        doc["meter"] = data.meterId;
-        doc["usg"] = data.waterUsage;
-        char buffer[256];
-        size_t n = serializeJson(doc, buffer);
-        client.publish("water/consumption", buffer, n);
+        char topic[64];
+        char payload[16];
+        sprintf(topic, "water/%d", data.meterId);
+        sprintf(payload, "%d", data.waterUsage);
+
+        client.publish(topic, payload);
         
         Serial.print("WatermeterId: ");
         Serial.println(data.meterId, HEX);
